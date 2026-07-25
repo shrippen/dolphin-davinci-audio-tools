@@ -32,26 +32,26 @@ show_distro_commands() {
     echo "For your distribution ($distro), install dependencies manually:"
     echo
     case "$distro" in
-        ubuntu|debian|linuxmint|pop)
-            echo "sudo apt update"
-            echo "sudo apt install ffmpeg zenity libnotify-bin bc"
-            ;;
-        fedora|centos|rhel)
-            echo "sudo dnf install ffmpeg zenity libnotify bc"
-            ;;
-        arch|manjaro)
-            echo "sudo pacman -S ffmpeg zenity libnotify bc"
-            ;;
-        opensuse*)
-            echo "sudo zypper install ffmpeg zenity libnotify-tools bc"
-            ;;
-        *)
-            echo "Please install these packages using your distribution's package manager:"
-            echo "- ffmpeg"
-            echo "- zenity"
-            echo "- libnotify (or equivalent providing notify-send)"
-            echo "- bc"
-            ;;
+    ubuntu | debian | linuxmint | pop)
+        echo "sudo apt update"
+        echo "sudo apt install ffmpeg zenity libnotify-bin bc"
+        ;;
+    fedora | centos | rhel)
+        echo "sudo dnf install ffmpeg zenity libnotify bc"
+        ;;
+    arch | manjaro)
+        echo "sudo pacman -S ffmpeg zenity libnotify bc"
+        ;;
+    opensuse*)
+        echo "sudo zypper install ffmpeg zenity libnotify-tools bc"
+        ;;
+    *)
+        echo "Please install these packages using your distribution's package manager:"
+        echo "- ffmpeg"
+        echo "- zenity"
+        echo "- libnotify (or equivalent providing notify-send)"
+        echo "- bc"
+        ;;
     esac
     echo
 }
@@ -94,12 +94,12 @@ if [ ${#MISSING[@]} -ne 0 ]; then
             ARCH_PACKAGES=()
             for cmd in "${MISSING[@]}"; do
                 case "$cmd" in
-                    "notify-send")
-                        ARCH_PACKAGES+=("libnotify")
-                        ;;
-                    *)
-                        ARCH_PACKAGES+=("$cmd")
-                        ;;
+                "notify-send")
+                    ARCH_PACKAGES+=("libnotify")
+                    ;;
+                *)
+                    ARCH_PACKAGES+=("$cmd")
+                    ;;
                 esac
             done
 
@@ -153,6 +153,7 @@ mkdir -p "$SCRIPT_DEST_DIR"
 script_files=(
     "aac2flac_replace"
     "aac2flac_mkv"
+    "aac2wav_replace"
     "toaac_replace"
     "toaac_mp4"
     "to_davinci_resolve_replace"
