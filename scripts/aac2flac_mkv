@@ -3,7 +3,9 @@ set -e
 IFS=$'\n\t'
 
 FFMPEG="/usr/bin/ffmpeg"
-ZENITY="/usr/bin/zenity"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KDIALOG="/usr/bin/kdialog"
+PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
 
 # Embedded functions to avoid dependency issues
@@ -132,7 +134,7 @@ for INPUT in "$@"; do
         echo "# Converting $BASENAME to FLAC — $(date -u -d @$OUT_SEC +%T) elapsed"
       fi
     done
-  ) | $ZENITY --progress --title="AAC → FLAC (.mkv)" --percentage=0 --auto-close --width=420
+  ) | $PROGRESS "AAC → FLAC (.mkv)"
 
   FFmpeg_exit_code=${PIPESTATUS[0]}
 

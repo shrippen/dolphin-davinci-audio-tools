@@ -4,7 +4,7 @@ set -e
 # Dolphin Davinci Audio Tools Installation Script
 # Supports Ubuntu/Debian automatic installation, provides manual instructions for other distros
 
-REQUIRED=(ffmpeg zenity notify-send bc)
+REQUIRED=(ffmpeg kdialog notify-send bc)
 MISSING=()
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_DIR="$HOME/.local/share/kio/servicemenus"
@@ -34,21 +34,22 @@ show_distro_commands() {
     case "$distro" in
     ubuntu | debian | linuxmint | pop)
         echo "sudo apt update"
-        echo "sudo apt install ffmpeg zenity libnotify-bin bc"
+        echo "sudo apt install ffmpeg kdialog qdbus-qt5 libnotify-bin bc"
         ;;
     fedora | centos | rhel)
-        echo "sudo dnf install ffmpeg zenity libnotify bc"
+        echo "sudo dnf install ffmpeg kdialog qt6-qttools libnotify bc"
         ;;
     arch | manjaro)
-        echo "sudo pacman -S ffmpeg zenity libnotify bc"
+        echo "sudo pacman -S ffmpeg kdialog qt6-tools libnotify bc"
         ;;
     opensuse*)
-        echo "sudo zypper install ffmpeg zenity libnotify-tools bc"
+        echo "sudo zypper install ffmpeg kdialog libqt6-qttools libnotify-tools bc"
         ;;
     *)
         echo "Please install these packages using your distribution's package manager:"
         echo "- ffmpeg"
-        echo "- zenity"
+        echo "- kdialog"
+        echo "- qdbus / qdbus6 (Qt tools, for progress dialogs)"
         echo "- libnotify (or equivalent providing notify-send)"
         echo "- bc"
         ;;
@@ -63,6 +64,11 @@ for cmd in "${REQUIRED[@]}"; do
     fi
 done
 
+# Progress dialogs need qdbus or qdbus6 to drive kdialog
+if ! command -v qdbus >/dev/null 2>&1 && ! command -v qdbus6 >/dev/null 2>&1; then
+    MISSING+=("qdbus")
+fi
+
 if [ ${#MISSING[@]} -ne 0 ]; then
     echo "Missing dependencies: ${MISSING[*]}"
     echo
@@ -74,8 +80,22 @@ if [ ${#MISSING[@]} -ne 0 ]; then
         read -p "Install missing packages now? [y/N] " yn
         if [[ "$yn" =~ ^[Yy]$ ]]; then
             echo "Installing missing packages..."
+            DEB_PACKAGES=()
+            for cmd in "${MISSING[@]}"; do
+                case "$cmd" in
+                "notify-send")
+                    DEB_PACKAGES+=("libnotify-bin")
+                    ;;
+                "qdbus")
+                    DEB_PACKAGES+=("qdbus-qt5")
+                    ;;
+                *)
+                    DEB_PACKAGES+=("$cmd")
+                    ;;
+                esac
+            done
             sudo apt update
-            sudo apt install -y "${MISSING[@]}" || {
+            sudo apt install -y "${DEB_PACKAGES[@]}" || {
                 echo "Failed to install dependencies. Please install manually:"
                 show_distro_commands
                 exit 1
@@ -96,6 +116,9 @@ if [ ${#MISSING[@]} -ne 0 ]; then
                 case "$cmd" in
                 "notify-send")
                     ARCH_PACKAGES+=("libnotify")
+                    ;;
+                "qdbus")
+                    ARCH_PACKAGES+=("qt6-tools")
                     ;;
                 *)
                     ARCH_PACKAGES+=("$cmd")
@@ -151,6 +174,7 @@ mkdir -p "$SCRIPT_DEST_DIR"
 
 # Copy all script files
 script_files=(
+    "kdialog_progress"
     "aac2flac_replace"
     "aac2flac_mkv"
     "aac2wav_replace"

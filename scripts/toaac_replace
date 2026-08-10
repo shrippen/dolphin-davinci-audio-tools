@@ -3,7 +3,9 @@ set -e
 IFS=$'\n\t'
 
 FFMPEG="/usr/bin/ffmpeg"
-ZENITY="/usr/bin/zenity"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KDIALOG="/usr/bin/kdialog"
+PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
 
 # Embedded functions to avoid dependency issues
@@ -39,27 +41,53 @@ has_aac_audio() {
     fi
 }
 
-# Convert non-AAC audio streams to AAC (192kb/s, 48kHz) while preserving video/subtitles/metadata
-for INPUT in "$@"; do
-  [[ -f "$INPUT" ]] || continue
+# --- NEW LOGIC: Scanning and questioning ---
+FILES_TO_PROCESS=()
+FILES_ALREADY_AAC=()
 
+for FILE in "$@"; do
+    [[ -f "$FILE" ]] || continue
+    if has_aac_audio "$FILE"; then
+        FILES_ALREADY_AAC+=("$FILE")
+    else
+        # Only add if it actually has audio (to avoid errors later)
+        if [[ $(detect_audio_streams "$FILE") != "none" ]]; then
+            FILES_TO_PROCESS+=("$FILE")
+        fi
+    fi
+done
+
+# If there are files already containing AAC, ask the user
+if [[ ${#FILES_ALREADY_AAC[@]} -gt 0 ]]; then
+    # Build a list for the dialog
+    list_text=""
+    for f in "${FILES_ALREADY_AAC[@]}"; do
+        list_text+="$(basename "$f")"$'\n'
+    done
+
+    if $KDIALOG --title "AAC already present" --yesno \
+        "The following files already contain AAC audio:
+
+$list_text
+Do you want to re-encode them anyway (to fix potential profile/muxer issues)?"; then
+        # Add them to the process list
+        FILES_TO_PROCESS+=("${FILES_ALREADY_AAC[@]}")
+    fi
+fi
+
+# If no files to process, exit
+if [[ ${#FILES_TO_PROCESS[@]} -eq 0 ]]; then
+    $NOTIFY "To AAC" "No files to process"
+    exit 0
+fi
+# --------------------------------------------
+
+# Convert audio streams to AAC (192kb/s, 48kHz) while preserving video/subtitles/metadata
+for INPUT in "${FILES_TO_PROCESS[@]}"; do
   DIR="$(dirname "$INPUT")"
   BASENAME="$(basename "$INPUT")"
   EXT="${BASENAME##*.}"
   NAME="${BASENAME%.*}"
-
-  # Check if file already has AAC audio
-  if has_aac_audio "$INPUT"; then
-    $NOTIFY "To AAC" "Skipped: $BASENAME (already has AAC audio)"
-    continue
-  fi
-
-  # Check if file has audio streams at all
-  audio_streams=$(detect_audio_streams "$INPUT")
-  if [[ "$audio_streams" == "none" ]]; then
-    $NOTIFY "To AAC" "Skipped: $BASENAME (no audio streams found)"
-    continue
-  fi
 
   # Smart container selection based on video codec
   video_codec=$(detect_video_codec "$INPUT")
@@ -104,7 +132,7 @@ for INPUT in "$@"; do
         echo "# Converting $BASENAME to AAC — $(date -u -d @$OUT_SEC +%T) elapsed"
       fi
     done
-  ) | $ZENITY --progress --title="To AAC (replace)" --percentage=0 --auto-close --width=420
+  ) | $PROGRESS "To AAC (replace)"
 
   if [[ -f "$TMP_OUTPUT" ]]; then
     mv "$INPUT" "${INPUT}.bak"

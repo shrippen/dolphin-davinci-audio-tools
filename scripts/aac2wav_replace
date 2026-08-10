@@ -3,7 +3,9 @@ set -e
 IFS=$'\n\t'
 
 FFMPEG="/usr/bin/ffmpeg"
-ZENITY="/usr/bin/zenity"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KDIALOG="/usr/bin/kdialog"
+PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
 
 # Embedded functions to avoid dependency issues
@@ -128,9 +130,9 @@ for INPUT in "$@"; do
     done
     # WICHTIG: PIPESTATUS hier abfragen, direkt nach der FFmpeg-Pipe,
     # und in eine Datei schreiben, da der Exit-Code der äußeren
-    # "(...) | zenity"-Pipe sonst nicht den von FFmpeg widerspiegelt.
+    # "(...) | kdialog progress"-Pipe sonst nicht den von FFmpeg widerspiegelt.
     echo "${PIPESTATUS[0]}" > "$EXIT_CODE_FILE"
-  ) | $ZENITY --progress --title="AAC → WAV (Original-Container)" --percentage=0 --auto-close --width=420
+  ) | $PROGRESS "AAC → WAV (Original-Container)"
 
   FFmpeg_exit_code="$(cat "$EXIT_CODE_FILE" 2>/dev/null || echo 1)"
   rm -f "$EXIT_CODE_FILE"

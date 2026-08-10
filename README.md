@@ -28,27 +28,28 @@ You must install these dependencies before using the tool:
 
 ### Ubuntu/Debian
 ```bash
-sudo apt install ffmpeg zenity libnotify-bin bc
+sudo apt install ffmpeg kdialog qdbus-qt5 libnotify-bin bc
 ```
 
 ### Fedora/CentOS/RHEL
 ```bash
-sudo dnf install ffmpeg zenity libnotify bc
+sudo dnf install ffmpeg kdialog qt6-qttools libnotify bc
 ```
 
 ### Arch Linux
 ```bash
-sudo pacman -S ffmpeg zenity libnotify bc
+sudo pacman -S ffmpeg kdialog qt6-tools libnotify bc
 ```
 
 ### openSUSE
 ```bash
-sudo zypper install ffmpeg zenity libnotify-tools bc
+sudo zypper install ffmpeg kdialog libqt6-qttools libnotify-tools bc
 ```
 
 ### Other Distributions
 - **ffmpeg**: For video/audio conversion
-- **zenity**: For graphical progress dialogs
+- **kdialog**: For native KDE progress and confirmation dialogs
+- **qdbus / qdbus6**: Qt D-Bus tools (required to update kdialog progress bars)
 - **libnotify/notify-send**: For desktop notifications
 - **bc**: For mathematical calculations in progress tracking
 
@@ -202,7 +203,8 @@ ls -la ~/.local/share/kio/servicemenus/
 #### Dependency Issues
 ```bash
 # Verify all dependencies are installed
-which ffmpeg zenity notify-send bc
+which ffmpeg kdialog notify-send bc
+which qdbus6 || which qdbus
 
 # Test FFmpeg functionality
 ffmpeg -version

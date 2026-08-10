@@ -3,7 +3,9 @@ set -e
 IFS=$'\n\t'
 
 FFMPEG="/usr/bin/ffmpeg"
-ZENITY="/usr/bin/zenity"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KDIALOG="/usr/bin/kdialog"
+PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
 
 # Embedded functions to avoid dependency issues
@@ -91,7 +93,7 @@ for INPUT in "$@"; do
   TOTAL_SEC=$(echo "$HOURS*3600 + $MINUTES*60 + $SECONDS" | bc)
 
   # Safety net: capture FFmpeg's real exit code via a file. PIPESTATUS after
-  # the outer "(...) | zenity" pipe would only reflect the subshell's own
+  # the outer "(...) | kdialog progress" pipe would only reflect the subshell's own
   # exit status, not FFmpeg's, so we write PIPESTATUS right after the inner
   # FFmpeg pipe instead.
   EXIT_CODE_FILE="$(mktemp --tmpdir="$DIR" ".exitcode.XXXXXX")"
@@ -124,7 +126,7 @@ for INPUT in "$@"; do
       fi
     done
     echo "${PIPESTATUS[0]}" > "$EXIT_CODE_FILE"
-  ) | $ZENITY --progress --title="AAC → FLAC (replace)" --percentage=0 --auto-close --width=420
+  ) | $PROGRESS "AAC → FLAC (replace)"
 
   FFmpeg_exit_code="$(cat "$EXIT_CODE_FILE" 2>/dev/null || echo 1)"
   rm -f "$EXIT_CODE_FILE"

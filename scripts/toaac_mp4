@@ -3,7 +3,9 @@ set -e
 IFS=$'\n\t'
 
 FFMPEG="/usr/bin/ffmpeg"
-ZENITY="/usr/bin/zenity"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KDIALOG="/usr/bin/kdialog"
+PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
 
 # Embedded functions to avoid dependency issues
@@ -119,7 +121,7 @@ for INPUT in "$@"; do
         echo "# Converting $BASENAME to AAC — $(date -u -d @$OUT_SEC +%T) elapsed"
       fi
     done
-  ) | $ZENITY --progress --title="To AAC (smart container)" --percentage=0 --auto-close --width=420
+  ) | $PROGRESS "To AAC (smart container)"
 
   if [[ -f "$TMP_OUTPUT" ]]; then
     FINAL="$DIR/$output_filename"
