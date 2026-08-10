@@ -5,26 +5,24 @@ IFS=$'\n\t'
 FFMPEG="/usr/bin/ffmpeg"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KDIALOG="/usr/bin/kdialog"
-PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
 
-# Embedded functions to avoid dependency issues
 is_valid_file() {
     local input_file="$1"
-    local min_size=1024  # 1KB minimum size
+    local min_size=1024
 
-    # Check file exists and is readable
     if [[ ! -f "$input_file" || ! -r "$input_file" ]]; then
         return 1
     fi
 
-    # Check file size is reasonable
-    local file_size=$(stat -c%s "$input_file" 2>/dev/null || echo 0)
+    local file_size
+    file_size=$(stat -c%s "$input_file" 2>/dev/null || echo 0)
     if [[ $file_size -lt $min_size ]]; then
         return 1
     fi
 
-    # Check if ffprobe can read the file
     if ! ffprobe -v error -show_format "$input_file" >/dev/null 2>&1; then
         return 1
     fi
@@ -57,28 +55,16 @@ has_aac_audio() {
     fi
 }
 
-# Convert AAC audio streams to WAV/PCM (16-bit, 48k), keep the ORIGINAL container/extension
-# and OVERWRITE the original file after successful conversion.
+QUEUE=()
 for INPUT in "$@"; do
   [[ -f "$INPUT" ]] || continue
-
-  DIR="$(dirname "$INPUT")"
   BASENAME="$(basename "$INPUT")"
-  NAME="${BASENAME%.*}"
-  EXT="${BASENAME##*.}"
 
-  # Falls die Datei keine Endung hat, Fallback auf "mkv"
-  if [[ "$EXT" == "$BASENAME" ]]; then
-    EXT="mkv"
-  fi
-
-  # Check if file is valid and not corrupted
   if ! is_valid_file "$INPUT"; then
     $NOTIFY "AAC→WAV" "Skipped: $BASENAME (file is corrupted or unreadable)"
     continue
   fi
 
-  # Check if file has AAC audio streams
   if ! has_aac_audio "$INPUT"; then
     audio_streams=$(detect_audio_streams "$INPUT")
     if [[ "$audio_streams" == "none" ]]; then
@@ -89,22 +75,30 @@ for INPUT in "$@"; do
     continue
   fi
 
-  # Ausgabedatei überschreibt die Originaldatei (gleicher Name, gleiche Endung)
+  QUEUE+=("$INPUT")
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "AAC → WAV (Original-Container)" "WAV" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  NAME="${BASENAME%.*}"
+  EXT="${BASENAME##*.}"
+
+  if [[ "$EXT" == "$BASENAME" ]]; then
+    EXT="mkv"
+  fi
+
   output_filename="$BASENAME"
   TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.${EXT}")"
 
-  # get duration (HH:MM:SS.ms)
-  DURATION=$($FFMPEG -i "$INPUT" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d , || echo "00:00:00.00")
-  HOURS=${DURATION:0:2}
-  MINUTES=${DURATION:3:2}
-  SECONDS=${DURATION:6:5}
-  TOTAL_SEC=$(echo "$HOURS*3600 + $MINUTES*60 + $SECONDS" | bc)
-
-  EXIT_CODE_FILE="$(mktemp --tmpdir="$DIR" ".exitcode.XXXXXX")"
-
-  (
-    echo "Converting to WAV..."
-    $FFMPEG -y -i "$INPUT" \
+  if ! ffmpeg_with_batch_progress $FFMPEG -y -i "$INPUT" \
       -map 0:v:0 \
       -map 0:a:0 \
       -map 0:s? \
@@ -112,46 +106,26 @@ for INPUT in "$@"; do
       -c:a pcm_s16le -ar 48000 \
       -c:s copy \
       -map_metadata 0 \
-      "$TMP_OUTPUT" -progress pipe:1 2>/dev/null | \
-    while read -r line; do
-      if [[ "$line" =~ out_time_ms=([0-9]+) ]]; then
-        OUT_MS=${BASH_REMATCH[1]}
-        OUT_SEC=$(echo "$OUT_MS / 1000000" | bc)
-        if [[ "$TOTAL_SEC" -gt 0 ]]; then
-          PCT=$(echo "$OUT_SEC * 100 / $TOTAL_SEC" | bc)
-          if [[ "$PCT" -lt 0 ]]; then PCT=0; fi
-          if [[ "$PCT" -gt 100 ]]; then PCT=100; fi
-        else
-          PCT=0
-        fi
-        echo $PCT
-        echo "# Converting $BASENAME to WAV — $(date -u -d @$OUT_SEC +%T) elapsed"
-      fi
-    done
-    # WICHTIG: PIPESTATUS hier abfragen, direkt nach der FFmpeg-Pipe,
-    # und in eine Datei schreiben, da der Exit-Code der äußeren
-    # "(...) | kdialog progress"-Pipe sonst nicht den von FFmpeg widerspiegelt.
-    echo "${PIPESTATUS[0]}" > "$EXIT_CODE_FILE"
-  ) | $PROGRESS "AAC → WAV (Original-Container)"
-
-  FFmpeg_exit_code="$(cat "$EXIT_CODE_FILE" 2>/dev/null || echo 1)"
-  rm -f "$EXIT_CODE_FILE"
-
-  if [[ "$FFmpeg_exit_code" -ne 0 ]]; then
-    $NOTIFY "AAC→WAV" "Conversion failed: $BASENAME (FFmpeg error $FFmpeg_exit_code)"
+      "$TMP_OUTPUT"; then
+    $NOTIFY "AAC→WAV" "Conversion failed: $BASENAME (FFmpeg error)"
     rm -f "$TMP_OUTPUT"
+    batch_progress_advance
     continue
   fi
 
-  # Sicherheitsnetz: Ausgabedatei erst validieren (Größe + ffprobe-lesbar),
-  # BEVOR das Original überschrieben wird.
   if ! is_valid_file "$TMP_OUTPUT"; then
     $NOTIFY "AAC→WAV" "Conversion failed: $BASENAME (output file invalid or empty — original was NOT overwritten)"
     rm -f "$TMP_OUTPUT"
+    batch_progress_advance
     continue
   fi
 
   FINAL="$DIR/$output_filename"
   mv -f "$TMP_OUTPUT" "$FINAL"
   $NOTIFY "AAC→WAV" "Overwritten: $output_filename"
+
+  batch_progress_advance
 done
+
+batch_progress_close
+trap - EXIT

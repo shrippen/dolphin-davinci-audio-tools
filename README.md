@@ -17,7 +17,7 @@ Dolphin Davinci Audio Tools provides right-click context menu options in KDE Dol
 - **Audio Conversions**: Convert between AAC and FLAC formats while preserving video
 - **Davinci Resolve Codecs**: DNxHD (≤1080p) and DNxHR SQ (>1080p) with smart resolution detection
 - **Container Support**: Professional .mov containers for DNx codecs
-- **Progress Tracking**: Real-time progress bars with time elapsed
+- **Progress Tracking**: Single batch dialog with pending files and duration-based ETA
 - **Batch Processing**: Convert multiple files simultaneously
 - **Metadata Preservation**: Maintains video streams, subtitles, chapters, and metadata
 - **Orientation Support**: Works with both horizontal and vertical video content
@@ -139,8 +139,10 @@ The tool automatically detects video resolution and selects the optimal codec:
 ### Progress Tracking
 
 All conversions include:
-- **Visual Progress Bar**: Shows conversion percentage and elapsed time
-- **Desktop Notifications**: Success/failure notifications when complete
+- **Single Batch Dialog**: One progress window for the whole selection (does not reopen per file)
+- **Pending File List**: Shows remaining conversions in the dialog label
+- **Duration-based ETA**: Rough remaining time weighted by media length, not file count
+- **Desktop Notifications**: Success/failure notifications when each file completes
 - **Error Handling**: Comprehensive error checking and user feedback
 
 ## File Format Details

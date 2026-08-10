@@ -174,7 +174,7 @@ mkdir -p "$SCRIPT_DEST_DIR"
 
 # Copy all script files
 script_files=(
-    "kdialog_progress"
+    "lib_batch_progress.sh"
     "aac2flac_replace"
     "aac2flac_mkv"
     "aac2wav_replace"

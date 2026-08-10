@@ -5,26 +5,24 @@ IFS=$'\n\t'
 FFMPEG="/usr/bin/ffmpeg"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KDIALOG="/usr/bin/kdialog"
-PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
 
-# Embedded functions to avoid dependency issues
 is_valid_file() {
     local input_file="$1"
-    local min_size=1024  # 1KB minimum size
+    local min_size=1024
 
-    # Check file exists and is readable
     if [[ ! -f "$input_file" || ! -r "$input_file" ]]; then
         return 1
     fi
 
-    # Check file size is reasonable
-    local file_size=$(stat -c%s "$input_file" 2>/dev/null || echo 0)
+    local file_size
+    file_size=$(stat -c%s "$input_file" 2>/dev/null || echo 0)
     if [[ $file_size -lt $min_size ]]; then
         return 1
     fi
 
-    # Check if ffprobe can read the file
     if ! ffprobe -v error -show_format "$input_file" >/dev/null 2>&1; then
         return 1
     fi
@@ -57,22 +55,16 @@ has_aac_audio() {
     fi
 }
 
-# Convert AAC audio streams to FLAC (16-bit, 48k) while preserving video/subtitles/metadata
+QUEUE=()
 for INPUT in "$@"; do
   [[ -f "$INPUT" ]] || continue
-
-  DIR="$(dirname "$INPUT")"
   BASENAME="$(basename "$INPUT")"
-  EXT="${BASENAME##*.}"
-  NAME="${BASENAME%.*}"
 
-  # Check if file is valid and not corrupted
   if ! is_valid_file "$INPUT"; then
     $NOTIFY "AAC→FLAC" "Skipped: $BASENAME (file is corrupted or unreadable)"
     continue
   fi
 
-  # Check if file has AAC audio streams
   if ! has_aac_audio "$INPUT"; then
     audio_streams=$(detect_audio_streams "$INPUT")
     if [[ "$audio_streams" == "none" ]]; then
@@ -83,24 +75,24 @@ for INPUT in "$@"; do
     continue
   fi
 
+  QUEUE+=("$INPUT")
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "AAC → FLAC (replace)" "FLAC" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  EXT="${BASENAME##*.}"
+  NAME="${BASENAME%.*}"
   TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mkv")"
 
-  # get duration (HH:MM:SS.ms)
-  DURATION=$($FFMPEG -i "$INPUT" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d , || echo "00:00:00.00")
-  HOURS=${DURATION:0:2}
-  MINUTES=${DURATION:3:2}
-  SECONDS=${DURATION:6:5}
-  TOTAL_SEC=$(echo "$HOURS*3600 + $MINUTES*60 + $SECONDS" | bc)
-
-  # Safety net: capture FFmpeg's real exit code via a file. PIPESTATUS after
-  # the outer "(...) | kdialog progress" pipe would only reflect the subshell's own
-  # exit status, not FFmpeg's, so we write PIPESTATUS right after the inner
-  # FFmpeg pipe instead.
-  EXIT_CODE_FILE="$(mktemp --tmpdir="$DIR" ".exitcode.XXXXXX")"
-
-  (
-    echo "Converting to FLAC..."
-    $FFMPEG -y -i "$INPUT" \
+  if ! ffmpeg_with_batch_progress $FFMPEG -y -i "$INPUT" \
       -map 0:v:0 \
       -map 0:a:0 \
       -map 0:s? \
@@ -108,45 +100,20 @@ for INPUT in "$@"; do
       -c:a flac -sample_fmt s16 -ar 48000 \
       -c:s copy \
       -map_metadata 0 \
-      "$TMP_OUTPUT" -progress pipe:1 2>/dev/null | \
-    while read -r line; do
-      if [[ "$line" =~ out_time_ms=([0-9]+) ]]; then
-        OUT_MS=${BASH_REMATCH[1]}
-        OUT_SEC=$(echo "$OUT_MS / 1000000" | bc)
-        # Avoid divide by zero
-        if [[ "$TOTAL_SEC" -gt 0 ]]; then
-          PCT=$(echo "$OUT_SEC * 100 / $TOTAL_SEC" | bc)
-          if [[ "$PCT" -lt 0 ]]; then PCT=0; fi
-          if [[ "$PCT" -gt 100 ]]; then PCT=100; fi
-        else
-          PCT=0
-        fi
-        echo $PCT
-        echo "# Converting $BASENAME to FLAC — $(date -u -d @$OUT_SEC +%T) elapsed"
-      fi
-    done
-    echo "${PIPESTATUS[0]}" > "$EXIT_CODE_FILE"
-  ) | $PROGRESS "AAC → FLAC (replace)"
-
-  FFmpeg_exit_code="$(cat "$EXIT_CODE_FILE" 2>/dev/null || echo 1)"
-  rm -f "$EXIT_CODE_FILE"
-
-  if [[ "$FFmpeg_exit_code" -ne 0 ]]; then
-    $NOTIFY "AAC→FLAC" "Conversion failed: $BASENAME (FFmpeg error $FFmpeg_exit_code, original was NOT touched)"
+      "$TMP_OUTPUT"; then
+    $NOTIFY "AAC→FLAC" "Conversion failed: $BASENAME (FFmpeg error, original was NOT touched)"
     rm -f "$TMP_OUTPUT"
+    batch_progress_advance
     continue
   fi
 
-  # Safety net: validate the output file (size + ffprobe readability) BEFORE
-  # replacing the original. This catches cases where FFmpeg exits 0 but still
-  # produced a broken or empty file.
   if ! is_valid_file "$TMP_OUTPUT"; then
     $NOTIFY "AAC→FLAC" "Conversion failed: $BASENAME (output file invalid or empty, original was NOT touched)"
     rm -f "$TMP_OUTPUT"
+    batch_progress_advance
     continue
   fi
 
-  # FLAC works best in .mkv container, so change extension if needed
   if [[ "$EXT" != "mkv" ]]; then
     NEW_BASENAME="${NAME}.mkv"
     mv "$INPUT" "${INPUT}.bak"
@@ -154,10 +121,14 @@ for INPUT in "$@"; do
     rm -f "${INPUT}.bak"
     $NOTIFY "AAC→FLAC" "Replaced: $BASENAME → $NEW_BASENAME"
   else
-    # Original already has .mkv extension, simple replacement
     mv "$INPUT" "${INPUT}.bak"
     mv "$TMP_OUTPUT" "$INPUT"
     rm -f "${INPUT}.bak"
     $NOTIFY "AAC→FLAC" "Replaced: $BASENAME"
   fi
+
+  batch_progress_advance
 done
+
+batch_progress_close
+trap - EXIT

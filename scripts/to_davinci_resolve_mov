@@ -5,26 +5,24 @@ IFS=$'\n\t'
 FFMPEG="/usr/bin/ffmpeg"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KDIALOG="/usr/bin/kdialog"
-PROGRESS="$SCRIPT_DIR/kdialog_progress"
 NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
 
-# Embedded functions to avoid dependency issues
 is_valid_file() {
     local input_file="$1"
-    local min_size=1024  # 1KB minimum size
+    local min_size=1024
 
-    # Check file exists and is readable
     if [[ ! -f "$input_file" || ! -r "$input_file" ]]; then
         return 1
     fi
 
-    # Check file size is reasonable
-    local file_size=$(stat -c%s "$input_file" 2>/dev/null || echo 0)
+    local file_size
+    file_size=$(stat -c%s "$input_file" 2>/dev/null || echo 0)
     if [[ $file_size -lt $min_size ]]; then
         return 1
     fi
 
-    # Check if ffprobe can read the file
     if ! ffprobe -v error -show_format "$input_file" >/dev/null 2>&1; then
         return 1
     fi
@@ -34,7 +32,7 @@ is_valid_file() {
 
 detect_video_resolution() {
     local input_file="$1"
-    local width height
+    local width height resolution
     width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$input_file" 2>/dev/null || echo "0")
     height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$input_file" 2>/dev/null || echo "0")
     if [[ "$width" -eq 0 || "$height" -eq 0 ]]; then
@@ -73,122 +71,121 @@ get_unique_filename() {
     echo "$name ($counter).$ext"
 }
 
-# Smart conversion to DNxHD/DNxHR intra-frame codecs in .mov container based on resolution
+QUEUE=()
+declare -A QUEUE_META_WIDTH QUEUE_META_HEIGHT QUEUE_META_PIXELS QUEUE_META_CODEC_NAME
+declare -A QUEUE_META_BITRATE QUEUE_META_PROFILE QUEUE_META_MODE
+
+THRESHOLD=$((1920 * 1080))
+
 for INPUT in "$@"; do
   [[ -f "$INPUT" ]] || continue
-
-  DIR="$(dirname "$INPUT")"
   BASENAME="$(basename "$INPUT")"
-  NAME="${BASENAME%.*}"
 
-  # Check if file is valid and not corrupted
   if ! is_valid_file "$INPUT"; then
     $NOTIFY "Davinci Resolve" "Skipped: $BASENAME (file is corrupted or unreadable)"
     continue
   fi
 
-  # Check if file has video streams
   if ! has_video_streams "$INPUT"; then
     $NOTIFY "Davinci Resolve" "Skipped: $BASENAME (no video streams found)"
     continue
   fi
 
-  # Robust video resolution detection
   resolution=$(detect_video_resolution "$INPUT")
   WIDTH=$(echo "$resolution" | cut -d',' -f1)
   HEIGHT=$(echo "$resolution" | cut -d',' -f2)
 
-  # Calculate total pixels for orientation support
-  if [[ "$WIDTH" -gt 0 && "$HEIGHT" -gt 0 ]]; then
-    TOTAL_PIXELS=$((WIDTH * HEIGHT))
-    THRESHOLD=$((1920 * 1080))  # 1080p threshold = 2,073,600 pixels
-
-    # FFmpeg uses dnxhd encoder for both DNxHD and DNxHR
-    # Resolution + profile determines the actual format
-    CODEC="dnxhd"
-    if [[ $TOTAL_PIXELS -le $THRESHOLD ]]; then
-      BITRATE="185M"  # Standard bitrate for 1080p DNxHD
-      FRAME_RATE="30"
-      CODEC_NAME="DNxHD (1080p)"
-    else
-      PROFILE="dnxhr_sq"  # DNxHR SQ profile for >1080p resolutions
-      FRAME_RATE="30"
-      CODEC_NAME="DNxHR SQ (4K+)"
-    fi
-  else
+  if [[ "$WIDTH" -le 0 || "$HEIGHT" -le 0 ]]; then
     $NOTIFY "Davinci Resolve" "Resolution detection failed for $BASENAME (file may be corrupted or unsupported)"
     continue
   fi
 
-  # Get unique filename to avoid overwriting
+  TOTAL_PIXELS=$((WIDTH * HEIGHT))
+  if [[ $TOTAL_PIXELS -le $THRESHOLD ]]; then
+    CODEC_NAME="DNxHD (1080p)"
+    MODE="dnxhd"
+    BITRATE="185M"
+    PROFILE=""
+  else
+    CODEC_NAME="DNxHR SQ (4K+)"
+    MODE="dnxhr"
+    BITRATE=""
+    PROFILE="dnxhr_sq"
+  fi
+
+  QUEUE+=("$INPUT")
+  QUEUE_META_WIDTH["$INPUT"]="$WIDTH"
+  QUEUE_META_HEIGHT["$INPUT"]="$HEIGHT"
+  QUEUE_META_PIXELS["$INPUT"]="$TOTAL_PIXELS"
+  QUEUE_META_CODEC_NAME["$INPUT"]="$CODEC_NAME"
+  QUEUE_META_BITRATE["$INPUT"]="$BITRATE"
+  QUEUE_META_PROFILE["$INPUT"]="$PROFILE"
+  QUEUE_META_MODE["$INPUT"]="$MODE"
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "Davinci Resolve conversion" "DNx" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  NAME="${BASENAME%.*}"
+  WIDTH="${QUEUE_META_WIDTH[$INPUT]}"
+  HEIGHT="${QUEUE_META_HEIGHT[$INPUT]}"
+  CODEC_NAME="${QUEUE_META_CODEC_NAME[$INPUT]}"
+  MODE="${QUEUE_META_MODE[$INPUT]}"
+  BITRATE="${QUEUE_META_BITRATE[$INPUT]}"
+  PROFILE="${QUEUE_META_PROFILE[$INPUT]}"
+  FRAME_RATE="30"
+  CODEC="dnxhd"
+
+  BP_ACTION="$CODEC_NAME"
+  batch_progress_tick 0 1
+
   output_filename=$(get_unique_filename "$DIR" "$NAME" "mov")
   TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mov")"
 
-  # get duration (HH:MM:SS.ms)
-  DURATION=$($FFMPEG -i "$INPUT" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d , || echo "00:00:00.00")
-  HOURS=${DURATION:0:2}
-  MINUTES=${DURATION:3:2}
-  SECONDS=${DURATION:6:5}
-  TOTAL_SEC=$(echo "$HOURS*3600 + $MINUTES*60 + $SECONDS" | bc)
+  if [[ "$MODE" == "dnxhd" ]]; then
+    ffmpeg_ok=true
+    ffmpeg_with_batch_progress $FFMPEG -y -i "$INPUT" \
+      -map 0 \
+      -c:v "$CODEC" -b:v "$BITRATE" -r "$FRAME_RATE" -pix_fmt yuv422p \
+      -c:a pcm_s24le -ar 48000 \
+      -c:s copy \
+      -map_metadata 0 \
+      "$TMP_OUTPUT" || ffmpeg_ok=false
+  else
+    ffmpeg_ok=true
+    ffmpeg_with_batch_progress $FFMPEG -y -i "$INPUT" \
+      -map 0 \
+      -c:v "$CODEC" -profile:v "$PROFILE" -r "$FRAME_RATE" -pix_fmt yuv422p \
+      -c:a pcm_s24le -ar 48000 \
+      -c:s copy \
+      -map_metadata 0 \
+      "$TMP_OUTPUT" || ffmpeg_ok=false
+  fi
 
-  # Run FFmpeg with progress tracking
-  (
-    if [[ $TOTAL_PIXELS -le $THRESHOLD ]]; then
-      # DNxHD for ≤1080p with bitrate
-      $FFMPEG -y -i "$INPUT" \
-        -map 0 \
-        -c:v "$CODEC" -b:v "$BITRATE" -r "$FRAME_RATE" -pix_fmt yuv422p \
-        -c:a pcm_s24le -ar 48000 \
-        -c:s copy \
-        -map_metadata 0 \
-        "$TMP_OUTPUT" -progress pipe:1 2>/dev/null
-    else
-      # DNxHR for >1080p with profile
-      $FFMPEG -y -i "$INPUT" \
-        -map 0 \
-        -c:v "$CODEC" -profile:v "$PROFILE" -r "$FRAME_RATE" -pix_fmt yuv422p \
-        -c:a pcm_s24le -ar 48000 \
-        -c:s copy \
-        -map_metadata 0 \
-        "$TMP_OUTPUT" -progress pipe:1 2>/dev/null
-    fi | \
-    while read -r line; do
-      if [[ "$line" =~ out_time_ms=([0-9]+) ]]; then
-        OUT_MS=${BASH_REMATCH[1]}
-        OUT_SEC=$(echo "$OUT_MS / 1000000" | bc)
-        # Avoid divide by zero
-        if [[ "$TOTAL_SEC" -gt 0 ]]; then
-          PCT=$(echo "$OUT_SEC * 100 / $TOTAL_SEC" | bc)
-          if [[ "$PCT" -lt 0 ]]; then PCT=0; fi
-          if [[ "$PCT" -gt 100 ]]; then PCT=100; fi
-        else
-          PCT=0
-        fi
-        echo $PCT
-        echo "# Converting $BASENAME to $CODEC_NAME — $(date -u -d @$OUT_SEC +%T) elapsed"
-      fi
-    done
-  ) | $PROGRESS "$CODEC_NAME conversion"
-
-  FFmpeg_exit_code=${PIPESTATUS[0]}
-
-  if [[ $FFmpeg_exit_code -ne 0 ]]; then
-    $NOTIFY "Davinci Resolve" "Conversion failed: $BASENAME (FFmpeg error $FFmpeg_exit_code)"
+  if [[ "$ffmpeg_ok" != true ]]; then
+    $NOTIFY "Davinci Resolve" "Conversion failed: $BASENAME (FFmpeg error)"
     rm -f "$TMP_OUTPUT"
+    batch_progress_advance
     continue
   fi
 
   if [[ ! -s "$TMP_OUTPUT" ]]; then
     $NOTIFY "Davinci Resolve" "Conversion failed: $BASENAME (empty output file)"
     rm -f "$TMP_OUTPUT"
+    batch_progress_advance
     continue
   fi
 
   if [[ -f "$TMP_OUTPUT" ]]; then
     FINAL="$DIR/$output_filename"
     mv "$TMP_OUTPUT" "$FINAL"
-
-    # Check if filename was modified
     if [[ "$output_filename" != "${NAME}.mov" ]]; then
       $NOTIFY "Davinci Resolve" "Created: $output_filename → $CODEC_NAME (${WIDTH}x${HEIGHT}) (renamed to avoid overwrite)"
     else
@@ -197,4 +194,9 @@ for INPUT in "$@"; do
   else
     $NOTIFY "Davinci Resolve" "Conversion failed: $BASENAME"
   fi
+
+  batch_progress_advance
 done
+
+batch_progress_close
+trap - EXIT
