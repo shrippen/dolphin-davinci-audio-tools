@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -e
+IFS=$'\n\t'
+
+FFMPEG="/usr/bin/ffmpeg"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_media_helpers.sh
+source "$SCRIPT_DIR/lib_media_helpers.sh"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
+
+QUEUE=()
+for INPUT in "$@"; do
+  [[ -f "$INPUT" ]] || continue
+  BASENAME="$(basename "$INPUT")"
+
+  if ! is_valid_file "$INPUT"; then
+    $NOTIFY "Audio→FLAC" "Skipped: $BASENAME (file is corrupted or unreadable)"
+    continue
+  fi
+
+  if ! has_audio_streams "$INPUT"; then
+    $NOTIFY "Audio→FLAC" "Skipped: $BASENAME (no audio streams found)"
+    continue
+  fi
+
+  QUEUE+=("$INPUT")
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "Audio → FLAC (new file)" "FLAC" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  NAME="${BASENAME%.*}"
+
+  if is_audio_only "$INPUT"; then
+    output_ext="flac"
+    output_filename=$(get_unique_filename "$DIR" "$NAME" "flac")
+    TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.flac")"
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0:a:0
+      -c:a flac -sample_fmt s16 -ar 48000
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+  else
+    output_ext="mkv"
+    output_filename=$(get_unique_filename "$DIR" "$NAME" "mkv")
+    TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mkv")"
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0:v:0 -map 0:a:0 -map 0:s?
+      -c:v copy
+      -c:a flac -sample_fmt s16 -ar 48000
+      -c:s copy
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+  fi
+
+  if ! ffmpeg_with_batch_progress $FFMPEG "${ffmpeg_args[@]}"; then
+    $NOTIFY "Audio→FLAC" "Conversion failed: $BASENAME (FFmpeg error)"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  if [[ -f "$TMP_OUTPUT" ]]; then
+    FINAL="$DIR/$output_filename"
+    mv "$TMP_OUTPUT" "$FINAL"
+    if [[ "$output_filename" != "${NAME}.${output_ext}" ]]; then
+      $NOTIFY "Audio→FLAC" "Created: $output_filename (renamed to avoid overwrite)"
+    else
+      $NOTIFY "Audio→FLAC" "Created: $output_filename"
+    fi
+  else
+    $NOTIFY "Audio→FLAC" "Conversion failed: $BASENAME"
+  fi
+
+  batch_progress_advance
+done
+
+batch_progress_close
+trap - EXIT

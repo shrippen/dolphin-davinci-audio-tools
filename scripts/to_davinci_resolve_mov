@@ -87,7 +87,7 @@ for INPUT in "$@"; do
   fi
 
   if ! has_video_streams "$INPUT"; then
-    $NOTIFY "Davinci Resolve" "Skipped: $BASENAME (no video streams found)"
+    $NOTIFY "Davinci Resolve" "Skipped: $BASENAME (no video streams — DNx conversion requires video)"
     continue
   fi
 

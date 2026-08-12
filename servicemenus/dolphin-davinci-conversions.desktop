@@ -1,35 +1,40 @@
 [Desktop Entry]
 Type=Service
 MimeType=video/*;audio/*;
-Actions=aac2flacReplace;aac2flacMkv;aac2wavReplace;toaacReplace;toaacMp4;toDavinciResolveReplace;toDavinciResolveMov
+Actions=audio2flacReplace;audio2flacNew;audio2wavReplace;audio2wavFile;audio2aacReplace;audio2aacNew;toDavinciResolveReplace;toDavinciResolveMov
 X-KDE-Submenu=Davinci Resolve Conversions
 X-KDE-Priority=TopLevel
 Name=Davinci Resolve Conversions
 
-[Desktop Action aac2flacReplace]
-Name=Convert AAC audio to FLAC (delete original file)
+[Desktop Action audio2flacReplace]
+Name=Audio to FLAC (replace original file)
 Icon=audio-x-flac
-Exec=/path/to/scripts/aac2flac_replace %F
+Exec=/path/to/scripts/audio2flac_replace %F
 
-[Desktop Action aac2flacMkv]
-Name=Convert AAC audio to FLAC (.mkv)
+[Desktop Action audio2flacNew]
+Name=Audio to FLAC (new file, video as mkv)
 Icon=audio-x-flac
-Exec=/path/to/scripts/aac2flac_mkv %F
+Exec=/path/to/scripts/audio2flac_mkv %F
 
-[Desktop Action aac2wavReplace]
-Name=Convert AAC audio to WAV (replace, keep container)
+[Desktop Action audio2wavReplace]
+Name=Audio to WAV (replace, keep container)
 Icon=audio-x-wav
-Exec=/path/to/scripts/aac2wav_replace %F
+Exec=/path/to/scripts/audio2wav_replace %F
 
-[Desktop Action toaacReplace]
-Name=Convert audio to AAC (replace original)
-Icon=audio-x-aac
-Exec=/path/to/scripts/toaac_replace %F
+[Desktop Action audio2wavFile]
+Name=Audio to WAV (.wav, delete original file)
+Icon=audio-x-wav
+Exec=/path/to/scripts/audio2wav %F
 
-[Desktop Action toaacMp4]
-Name=Convert audio to AAC (smart container)
+[Desktop Action audio2aacReplace]
+Name=Audio to AAC (replace original)
 Icon=audio-x-aac
-Exec=/path/to/scripts/toaac_mp4 %F
+Exec=/path/to/scripts/audio2aac_replace %F
+
+[Desktop Action audio2aacNew]
+Name=Audio to AAC (new file, video as mkv)
+Icon=audio-x-aac
+Exec=/path/to/scripts/audio2aac_mkv %F
 
 [Desktop Action toDavinciResolveReplace]
 Name=Convert to DNxHD/DNxHR (replace)

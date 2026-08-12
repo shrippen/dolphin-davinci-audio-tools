@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -e
+IFS=$'\n\t'
+
+FFMPEG="/usr/bin/ffmpeg"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_media_helpers.sh
+source "$SCRIPT_DIR/lib_media_helpers.sh"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
+
+QUEUE=()
+for INPUT in "$@"; do
+  [[ -f "$INPUT" ]] || continue
+  BASENAME="$(basename "$INPUT")"
+
+  if ! is_valid_file "$INPUT"; then
+    $NOTIFY "Audio→FLAC" "Skipped: $BASENAME (file is corrupted or unreadable)"
+    continue
+  fi
+
+  if ! has_audio_streams "$INPUT"; then
+    $NOTIFY "Audio→FLAC" "Skipped: $BASENAME (no audio streams found)"
+    continue
+  fi
+
+  QUEUE+=("$INPUT")
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "Audio → FLAC (replace)" "FLAC" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  EXT="${BASENAME##*.}"
+  NAME="${BASENAME%.*}"
+
+  if is_audio_only "$INPUT"; then
+    NEW_BASENAME="${NAME}.flac"
+    TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.flac")"
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0:a:0
+      -c:a flac -sample_fmt s16 -ar 48000
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+  else
+    NEW_BASENAME="${NAME}.mkv"
+    TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mkv")"
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0:v:0 -map 0:a:0 -map 0:s?
+      -c:v copy
+      -c:a flac -sample_fmt s16 -ar 48000
+      -c:s copy
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+    if [[ "$EXT" == "mkv" ]]; then
+      NEW_BASENAME="$BASENAME"
+    fi
+  fi
+
+  if ! ffmpeg_with_batch_progress $FFMPEG "${ffmpeg_args[@]}"; then
+    $NOTIFY "Audio→FLAC" "Conversion failed: $BASENAME (FFmpeg error, original was NOT touched)"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  if ! is_valid_file "$TMP_OUTPUT"; then
+    $NOTIFY "Audio→FLAC" "Conversion failed: $BASENAME (output file invalid or empty, original was NOT touched)"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  if [[ "$BASENAME" == "$NEW_BASENAME" ]]; then
+    mv "$INPUT" "${INPUT}.bak"
+    mv "$TMP_OUTPUT" "$INPUT"
+    rm -f "${INPUT}.bak"
+    $NOTIFY "Audio→FLAC" "Replaced: $BASENAME"
+  else
+    replace_original_with "$INPUT" "$TMP_OUTPUT" "$NEW_BASENAME"
+    $NOTIFY "Audio→FLAC" "Replaced: $BASENAME → $NEW_BASENAME"
+  fi
+
+  batch_progress_advance
+done
+
+batch_progress_close
+trap - EXIT

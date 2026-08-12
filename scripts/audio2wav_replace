@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -e
+IFS=$'\n\t'
+
+FFMPEG="/usr/bin/ffmpeg"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_media_helpers.sh
+source "$SCRIPT_DIR/lib_media_helpers.sh"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
+
+QUEUE=()
+for INPUT in "$@"; do
+  [[ -f "$INPUT" ]] || continue
+  BASENAME="$(basename "$INPUT")"
+
+  if ! is_valid_file "$INPUT"; then
+    $NOTIFY "Audio→WAV" "Skipped: $BASENAME (file is corrupted or unreadable)"
+    continue
+  fi
+
+  if is_audio_only "$INPUT"; then
+    $NOTIFY "Audio→WAV" "Skipped: $BASENAME (audio-only — use “Audio to WAV (.wav)” instead)"
+    continue
+  fi
+
+  if ! has_audio_streams "$INPUT"; then
+    $NOTIFY "Audio→WAV" "Skipped: $BASENAME (no audio streams found)"
+    continue
+  fi
+
+  QUEUE+=("$INPUT")
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "Audio → WAV (keep container)" "WAV" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  NAME="${BASENAME%.*}"
+  EXT="${BASENAME##*.}"
+
+  if [[ "$EXT" == "$BASENAME" ]]; then
+    EXT="mkv"
+  fi
+
+  output_filename="$BASENAME"
+  TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.${EXT}")"
+
+  if ! ffmpeg_with_batch_progress $FFMPEG -y -i "$INPUT" \
+      -map 0:v:0 -map 0:a:0 -map 0:s? \
+      -c:v copy \
+      -c:a pcm_s16le -ar 48000 \
+      -c:s copy \
+      -map_metadata 0 \
+      "$TMP_OUTPUT"; then
+    $NOTIFY "Audio→WAV" "Conversion failed: $BASENAME (FFmpeg error)"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  if ! is_valid_file "$TMP_OUTPUT"; then
+    $NOTIFY "Audio→WAV" "Conversion failed: $BASENAME (output file invalid or empty — original was NOT overwritten)"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  FINAL="$DIR/$output_filename"
+  mv -f "$TMP_OUTPUT" "$FINAL"
+  $NOTIFY "Audio→WAV" "Overwritten: $output_filename"
+
+  batch_progress_advance
+done
+
+batch_progress_close
+trap - EXIT

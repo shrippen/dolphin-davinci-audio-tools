@@ -175,11 +175,13 @@ mkdir -p "$SCRIPT_DEST_DIR"
 # Copy all script files
 script_files=(
     "lib_batch_progress.sh"
-    "aac2flac_replace"
-    "aac2flac_mkv"
-    "aac2wav_replace"
-    "toaac_replace"
-    "toaac_mp4"
+    "lib_media_helpers.sh"
+    "audio2flac_replace"
+    "audio2flac_mkv"
+    "audio2wav_replace"
+    "audio2wav"
+    "audio2aac_replace"
+    "audio2aac_mkv"
     "to_davinci_resolve_replace"
     "to_davinci_resolve_mov"
 )

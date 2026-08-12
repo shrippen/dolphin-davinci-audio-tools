@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -e
+IFS=$'\n\t'
+
+FFMPEG="/usr/bin/ffmpeg"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KDIALOG="/usr/bin/kdialog"
+NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_media_helpers.sh
+source "$SCRIPT_DIR/lib_media_helpers.sh"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
+
+FILES_TO_PROCESS=()
+FILES_ALREADY_AAC=()
+
+for FILE in "$@"; do
+    [[ -f "$FILE" ]] || continue
+    if ! has_audio_streams "$FILE"; then
+        continue
+    fi
+    if has_aac_audio "$FILE"; then
+        FILES_ALREADY_AAC+=("$FILE")
+    else
+        FILES_TO_PROCESS+=("$FILE")
+    fi
+done
+
+if [[ ${#FILES_ALREADY_AAC[@]} -gt 0 ]]; then
+    list_text=""
+    for f in "${FILES_ALREADY_AAC[@]}"; do
+        list_text+="$(basename "$f")"$'\n'
+    done
+
+    if $KDIALOG --title "Already AAC" --yesno \
+        "The following files already use AAC audio:
+
+$list_text
+Re-encode anyway (e.g. to fix profile or muxer issues)?"; then
+        FILES_TO_PROCESS+=("${FILES_ALREADY_AAC[@]}")
+    fi
+fi
+
+if [[ ${#FILES_TO_PROCESS[@]} -eq 0 ]]; then
+    $NOTIFY "Audio→AAC" "No files to process"
+    exit 0
+fi
+
+batch_progress_start "Audio → AAC (replace)" "AAC" "${FILES_TO_PROCESS[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${FILES_TO_PROCESS[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  NAME="${BASENAME%.*}"
+  EXT="${BASENAME##*.}"
+
+  if is_audio_only "$INPUT"; then
+    container_ext="m4a"
+    NEW_BASENAME="${NAME}.m4a"
+    TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.m4a")"
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0:a:0
+      -c:a aac -b:a 192k -ar 48000
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+    if [[ "$EXT" == "m4a" ]]; then
+      NEW_BASENAME="$BASENAME"
+    fi
+  else
+    video_codec=$(detect_video_codec "$INPUT")
+    if [[ "$video_codec" == "dnxhd" ]]; then
+      container_ext="mov"
+      NEW_BASENAME="$BASENAME"
+      TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mov")"
+    else
+      container_ext="mp4"
+      NEW_BASENAME="$BASENAME"
+      TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mp4")"
+    fi
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0 -map -0:d
+      -c:v copy
+      -c:a aac -b:a 192k -ar 48000
+      -c:s copy
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+  fi
+
+  if ! ffmpeg_with_batch_progress $FFMPEG "${ffmpeg_args[@]}"; then
+    $NOTIFY "Audio→AAC" "Conversion failed: $BASENAME"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  if [[ -f "$TMP_OUTPUT" ]]; then
+    if [[ "$BASENAME" == "$NEW_BASENAME" ]]; then
+      mv "$INPUT" "${INPUT}.bak"
+      mv "$TMP_OUTPUT" "$INPUT"
+      rm -f "${INPUT}.bak"
+      $NOTIFY "Audio→AAC" "Replaced: $BASENAME ($container_ext)"
+    else
+      replace_original_with "$INPUT" "$TMP_OUTPUT" "$NEW_BASENAME"
+      $NOTIFY "Audio→AAC" "Replaced: $BASENAME → $NEW_BASENAME"
+    fi
+  else
+    $NOTIFY "Audio→AAC" "Conversion failed: $BASENAME"
+  fi
+
+  batch_progress_advance
+done
+
+batch_progress_close
+trap - EXIT

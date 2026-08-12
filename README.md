@@ -14,7 +14,7 @@ Dolphin Davinci Audio Tools provides right-click context menu options in KDE Dol
 
 ### Key Features
 
-- **Audio Conversions**: Convert between AAC and FLAC formats while preserving video
+- **Audio Conversions**: Convert audio to FLAC, WAV, or AAC — any input codec FFmpeg supports
 - **Davinci Resolve Codecs**: DNxHD (≤1080p) and DNxHR SQ (>1080p) with smart resolution detection
 - **Container Support**: Professional .mov containers for DNx codecs
 - **Progress Tracking**: Single batch dialog with pending files and duration-based ETA
@@ -103,15 +103,22 @@ After installation, simply right-click on video or audio files in Dolphin and se
 ### Available Conversions
 
 #### Audio Conversions
-- **Convert AAC audio to FLAC (replace)**: AAC → FLAC (16-bit, 48kHz), replaces original file
-- **Convert AAC audio to FLAC (.mkv)**: AAC → FLAC, creates new .mkv file, preserves original
-  - *Note: FLAC conversions only work with AAC audio sources*
-- **Convert audio to AAC (replace original)**: Non-AAC → AAC (192kb/s, 48kHz), replaces original file
-- **Convert audio to AAC (smart container)**: Non-AAC → AAC, creates new file with smart container selection
+- **Audio to FLAC (delete original file)**: Any audio → FLAC (16-bit, 48kHz), replaces original
+  - Video files → `.mkv`; audio-only (e.g. `.m4a`, `.mp3`) → `.flac`
+- **Audio to FLAC (new file)**: Any audio → FLAC, creates new file, preserves original
+  - Video → new `.mkv`; audio-only → new `.flac`
+- **Audio to WAV (replace, keep container)**: Any audio in a **video file** → PCM in the original container (for Resolve proxies)
+  - Skips audio-only files (use “Audio to WAV (.wav)” instead)
+- **Audio to WAV (.wav, delete original file)**: Any audio-only file → standalone `.wav`, replaces original
+- **Audio to AAC (replace original)**: Any non-AAC audio → AAC (192kb/s, 48kHz), replaces original
+  - Video → same container (`.mp4`/`.mov`); audio-only → `.m4a`
+- **Audio to AAC (new file)**: Any non-AAC audio → AAC, creates new file
+  - Video → `.mp4`/`.mov`; audio-only → `.m4a`
 
 #### Davinci Resolve Video Conversions
 - **Convert to DNxHD/DNxHR (replace)**: Any resolution → appropriate intra-frame codec, replaces original file
 - **Convert to DNxHD/DNxHR (.mov)**: Any resolution → appropriate intra-frame codec, creates new .mov file, preserves original
+- Skips audio-only files (requires a video stream)
 
 *Note: The "to_davinci_resolve" scripts automatically convert to DNxHD (≤1080p) or DNxHR SQ (>1080p) based on video resolution.*
 
@@ -119,12 +126,13 @@ After installation, simply right-click on video or audio files in Dolphin and se
 
 The tool automatically selects the best container format for optimal compatibility:
 
-- **FLAC Conversions**: Creates .mkv files for best reliability (FLAC works better in .mkv containers)
+- **FLAC Conversions**: Video → `.mkv`; audio-only → `.flac`
 - **DNxHD/DNxHR Conversions**: Creates .mov files for professional standards (required by DNx codecs)
-- **AAC Conversions**: Uses smart container selection (.mov for DNxHD video, .mp4 for other codecs)
+- **AAC Conversions**: Video → `.mp4`/`.mov`; audio-only → `.m4a`
+- **WAV Conversions**: Audio-only → `.wav`; video proxies → PCM in original container
 
 **File Extension Changes**:
-- Replace options may change file extensions for compatibility (e.g., `video.mov` → `video.mkv` for FLAC)
+- Replace options may change file extensions for compatibility (e.g. `track.m4a` → `track.flac`, `video.mov` → `video.mkv`)
 - Original files are backed up temporarily during replacement, then safely removed
 
 ### Smart Resolution Detection
@@ -170,14 +178,14 @@ All conversions include:
 - **Audio**: All formats supported by FFmpeg (.aac, .flac, .wav, .mp3, etc.)
 
 ### Output Formats
-- **Video**: .mov (DNxHD/HR), .mkv (original container)
-- **Audio**: .flac (lossless), .mp4 (AAC), .mkv (preserves original container)
+- **Video**: .mov (DNxHD/HR), .mkv (FLAC in video)
+- **Audio**: .flac, .wav, .m4a (AAC), .mp4/.mov (AAC in video)
 
 ## Examples
 
-### Converting AAC Audio for Davinci Resolve
-1. Right-click on video file with AAC audio
-2. Select "Davinci Resolve Conversions" → "Convert AAC audio to FLAC (.mkv)"
+### Converting Audio for Davinci Resolve
+1. Right-click on a video or audio file
+2. Select **Davinci Resolve Conversions** → **Audio to FLAC (new file)**
 3. Wait for conversion to complete
 4. Use the new file in Davinci Resolve with fully compatible audio
 

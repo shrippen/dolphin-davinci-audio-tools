@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -e
+IFS=$'\n\t'
+
+FFMPEG="/usr/bin/ffmpeg"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOTIFY="/usr/bin/notify-send"
+# shellcheck source=lib_media_helpers.sh
+source "$SCRIPT_DIR/lib_media_helpers.sh"
+# shellcheck source=lib_batch_progress.sh
+source "$SCRIPT_DIR/lib_batch_progress.sh"
+
+QUEUE=()
+for INPUT in "$@"; do
+  [[ -f "$INPUT" ]] || continue
+  BASENAME="$(basename "$INPUT")"
+
+  if has_aac_audio "$INPUT"; then
+    $NOTIFY "Audio→AAC" "Skipped: $BASENAME (already AAC)"
+    continue
+  fi
+
+  if ! has_audio_streams "$INPUT"; then
+    $NOTIFY "Audio→AAC" "Skipped: $BASENAME (no audio streams found)"
+    continue
+  fi
+
+  QUEUE+=("$INPUT")
+done
+
+if [[ ${#QUEUE[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+batch_progress_start "Audio → AAC (new file)" "AAC" "${QUEUE[@]}"
+trap 'batch_progress_close' EXIT
+
+for INPUT in "${QUEUE[@]}"; do
+  DIR="$(dirname "$INPUT")"
+  BASENAME="$(basename "$INPUT")"
+  NAME="${BASENAME%.*}"
+
+  if is_audio_only "$INPUT"; then
+    container_ext="m4a"
+    output_filename=$(get_unique_filename "$DIR" "$NAME" "m4a")
+    TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.m4a")"
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0:a:0
+      -c:a aac -b:a 192k -ar 48000
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+  else
+    video_codec=$(detect_video_codec "$INPUT")
+    if [[ "$video_codec" == "dnxhd" ]]; then
+      container_ext="mov"
+      output_filename=$(get_unique_filename "$DIR" "$NAME" "mov")
+      TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mov")"
+    else
+      container_ext="mp4"
+      output_filename=$(get_unique_filename "$DIR" "$NAME" "mp4")
+      TMP_OUTPUT="$(mktemp --tmpdir="$DIR" ".${NAME}.XXXXXX.mp4")"
+    fi
+    ffmpeg_args=(
+      -y -i "$INPUT"
+      -map 0 -map -0:d
+      -c:v copy
+      -c:a aac -b:a 192k -ar 48000
+      -c:s copy
+      -map_metadata 0
+      "$TMP_OUTPUT"
+    )
+  fi
+
+  if ! ffmpeg_with_batch_progress $FFMPEG "${ffmpeg_args[@]}"; then
+    $NOTIFY "Audio→AAC" "Conversion failed: $BASENAME"
+    rm -f "$TMP_OUTPUT"
+    batch_progress_advance
+    continue
+  fi
+
+  if [[ -f "$TMP_OUTPUT" ]]; then
+    FINAL="$DIR/$output_filename"
+    mv "$TMP_OUTPUT" "$FINAL"
+    if [[ "$output_filename" != "${NAME}.${container_ext}" ]]; then
+      $NOTIFY "Audio→AAC" "Created: $output_filename (renamed to avoid overwrite)"
+    else
+      $NOTIFY "Audio→AAC" "Created: $output_filename"
+    fi
+  else
+    $NOTIFY "Audio→AAC" "Conversion failed: $BASENAME"
+  fi
+
+  batch_progress_advance
+done
+
+batch_progress_close
+trap - EXIT
