@@ -1,0 +1,48 @@
+# Design Reference
+
+This project follows the shared **shrippen Design Default** for all visual decisions.
+
+**Source:** <https://github.com/shrippen/DesignDefault>
+
+When making changes to the landing page, icons, badges, or any visual element,
+consult the DesignDefault repository for the canonical palette, typography,
+layout rules, and icon language.
+
+## Quick palette reference
+
+| Token       | Hex       | Role                          |
+|-------------|-----------|-------------------------------|
+| `bg-hard`   | `#1d2021` | Deepest background            |
+| `bg0`       | `#282828` | Page background               |
+| `bg1`       | `#3c3836` | Cards, elevated surfaces      |
+| `bg2`       | `#504945` | Borders, dividers             |
+| `fg0`       | `#fbf1c7` | Primary heading text          |
+| `fg1`       | `#ebdbb2` | Body text                     |
+| `fg2`       | `#d5c4a1` | Secondary / muted text        |
+| `fg3`       | `#a89984` | Placeholder, disabled, footer |
+| `accent`    | `#e8dcc4` | Brand warm-cream              |
+| `blue`      | `#83a598` | Primary action, links         |
+| `aqua`      | `#8ec07c` | Success, confirm              |
+| `green`     | `#b8bb26` | Positive, badges              |
+| `yellow`    | `#fabd2f` | Warnings                      |
+| `orange`    | `#fe8019` | Active / highlight            |
+| `red`       | `#fb4934` | Error, destructive            |
+| `purple`    | `#d3869b` | Tags, categories              |
+
+## Typography
+
+- **Headings:** Rajdhani (600/700) via Google Fonts
+- **Body:** System sans stack
+- **Code:** JetBrains Mono / Fira Code / Cascadia Code
+
+## Key rules
+
+- Dark-only landing page, no light mode
+- `--bg0` page, `--bg1` cards, `--bg-hard` hero/code blocks
+- Links & primary buttons use `--blue`
+- Max content width: 860px
+- Feature grid: `auto-fit minmax(240px, 1fr)`
+- Badges: shields.io with `labelColor=1c1c20`
+
+For the full specification (icon language, Plasma widget rules, OG image format,
+landing page template), see the [DesignDefault README](https://github.com/shrippen/DesignDefault).
