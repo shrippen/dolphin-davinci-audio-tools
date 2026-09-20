@@ -2,7 +2,7 @@
 
 This project follows the shared **shrippen Design Default** for all visual decisions.
 
-**Source:** <https://github.com/shrippen/DesignDefault>
+**Source:** <https://github.com/shrippen/shrippen.github.io>
 
 When making changes to the landing page, icons, badges, or any visual element,
 consult the DesignDefault repository for the canonical palette, typography,
@@ -45,7 +45,7 @@ layout rules, and icon language.
 - Badges: shields.io with `labelColor=1c1c20`
 
 For the full specification (icon language, Plasma widget rules, OG image format,
-landing page template), see the [DesignDefault README](https://github.com/shrippen/DesignDefault).
+landing page template), see the [DesignDefault README](https://github.com/shrippen/shrippen.github.io).
 
 ## Known issues
 
