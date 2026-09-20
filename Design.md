@@ -49,19 +49,15 @@ landing page template), see the [DesignDefault README](https://github.com/shripp
 
 ## Known issues
 
-### X-KDE-Submenu regression (KIO 6.29 / Plasma 6, August 2026)
+### X-KDE-Submenu regression (KIO 6.29 / Plasma 6, August 2026) — fixed
 
-`X-KDE-Submenu` in `.desktop` service menu files causes the **entire menu to
-not appear** in Dolphin's context menu. Removing the key makes all actions show
-at the top level again.
+`X-KDE-Submenu` in `.desktop` service menu files briefly caused the **entire
+menu to not appear** in Dolphin's context menu. This was a KIO regression and has
+since been fixed upstream, so the service menu uses
+`X-KDE-Submenu=Davinci Resolve Conversions` again.
 
-This is a regression — `X-KDE-Submenu` worked in earlier KF6 versions (confirmed
-working on KF 6.14 / Plasma 6.3.5 by other users). No exact upstream bug report
-exists yet for the "submenu completely invisible" variant. Related upstream bugs:
+Related upstream bugs (for reference):
 
 - [Bug 495740](https://bugs.kde.org/show_bug.cgi?id=495740) — Can't assign icon to submenu (open)
 - [Bug 505571](https://bugs.kde.org/show_bug.cgi?id=505571) — Submenu icon ignored (open)
 - [KDE Discuss: service menu ordering regression](https://discuss.kde.org/t/how-are-service-menus-ordered/40444)
-
-**TODO:** Re-add `X-KDE-Submenu=Davinci Resolve Conversions` once the regression
-is fixed upstream. Track KIO releases and test after each update.

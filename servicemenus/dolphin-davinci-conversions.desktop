@@ -2,7 +2,9 @@
 Type=Service
 MimeType=video/*;audio/*;
 Actions=audio2flacReplace;audio2flacNew;audio2wavReplace;audio2wavFile;audio2aacReplace;audio2aacNew;toDavinciResolveReplace;toDavinciResolveMov;
+X-KDE-Submenu=Davinci Resolve Conversions
 X-KDE-Priority=TopLevel
+Name=Davinci Resolve Conversions
 Terminal=false
 
 [Desktop Action audio2flacReplace]
