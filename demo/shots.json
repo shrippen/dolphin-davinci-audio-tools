@@ -1,0 +1,6 @@
+{
+  "kind": "command",
+  "start": "true",
+  "note": "Native KDE windows (Dolphin context menu, kdialog progress) cannot be grabbed headless yet. Take them by hand: demo/start.sh convert, then Spectacle.",
+  "shots": [{"name": "menu", "manual": true}, {"name": "progress", "manual": true}]
+}

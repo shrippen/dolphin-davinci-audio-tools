@@ -2,7 +2,7 @@
 set -e
 IFS=$'\n\t'
 
-FFMPEG="/usr/bin/ffmpeg"
+FFMPEG="${FFMPEG:-/usr/bin/ffmpeg}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NOTIFY="/usr/bin/notify-send"
 # shellcheck source=lib_media_helpers.sh
