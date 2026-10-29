@@ -25,7 +25,7 @@
 <nav class="nav"><div class="nav-inner">
   <a class="nav-brand" href="#"><img src="icon.svg" alt="">Dolphin Davinci Audio Tools</a>
   <div class="nav-links">
-    <a href="#why"><span lang="en">Why</span><span lang="de">Warum</span></a><a href="#features"><span lang="en">Features</span><span lang="de">Funktionen</span></a><a href="#conversions"><span lang="en">Conversions</span><span lang="de">Konvertierungen</span></a><a href="#install"><span lang="en">Install</span><span lang="de">Installation</span></a><a class="nav-hl" href="https://github.com/shrippen/dolphin-davinci-audio-tools">GitHub</a>
+    <a href="#why"><span lang="en">Why</span><span lang="de">Warum</span></a><a href="#features"><span lang="en">Features</span><span lang="de">Funktionen</span></a><a href="#conversions"><span lang="en">Conversions</span><span lang="de">Konvertierungen</span></a><a href="#install"><span lang="en">Install</span><span lang="de">Installation</span></a><a href="#changes"><span lang="en">Changes</span><span lang="de">Änderungen</span></a><a class="nav-hl" href="https://github.com/shrippen/dolphin-davinci-audio-tools">GitHub</a>
     <div class="lang" role="group" aria-label="Language">
       <button type="button" data-lang="en" aria-pressed="true">EN</button>
       <button type="button" data-lang="de" aria-pressed="false">DE</button>
@@ -106,6 +106,78 @@
 <span class="c"># Restart Dolphin</span>
 <span class="k">kquitapp5</span> dolphin &amp;&amp; <span class="k">dolphin</span></div>
 </section>
+
+<section class="section" id="changes">
+  <h2 lang="en">Changes</h2><h2 lang="de">Änderungen</h2>
+  <ol class="changelog">
+    <li class="release" id="v1.2.1">
+      <div class="release-head"><b class="release-version">1.2.1</b><time datetime="2026-09-20"><span lang="en">20 Sep 2026</span><span lang="de">20. Sep. 2026</span></time></div>
+      <div class="release-body">
+        <p class="release-lead"><span lang="en">The conversions are grouped in their submenu again.</span><span lang="de">Die Umwandlungen stehen wieder gesammelt in ihrem Untermenü.</span></p>
+        <div class="release-group" data-kind="fixed"><h3><span lang="en">Fixed</span><span lang="de">Behoben</span></h3><ul>
+          <li><span lang="en">Dolphin showed the entries without their submenu (<code>X-KDE-Submenu</code>) after a KIO regression; KIO fixed it upstream, and the grouping is restored.</span><span lang="de">Dolphin zeigte die Einträge nach einem Fehler in KIO ohne ihr Untermenü (<code>X-KDE-Submenu</code>); KIO hat ihn behoben, die Gruppierung ist wieder da.</span></li>
+        </ul></div>
+        <a class="release-notes" href="https://github.com/shrippen/dolphin-davinci-audio-tools/compare/v1.2.0...v1.2.1"><span lang="en">All changes since 1.2.0 →</span><span lang="de">Alle Änderungen seit 1.2.0 →</span></a>
+      </div>
+    </li>
+    <li class="release" id="v1.2.0">
+      <div class="release-head"><b class="release-version">1.2.0</b><time datetime="2026-08-12"><span lang="en">12 Aug 2026</span><span lang="de">12. Aug. 2026</span></time></div>
+      <div class="release-body">
+        <p class="release-lead"><span lang="en">The audio conversions take any audio, not only AAC, and audio-only files can be converted too.</span><span lang="de">Die Audio-Umwandlungen nehmen jeden Ton, nicht nur AAC, und auch reine Audiodateien lassen sich umwandeln.</span></p>
+        <div class="release-group" data-kind="new"><h3><span lang="en">New</span><span lang="de">Neu</span></h3><ul>
+          <li><span lang="en">Audio to WAV (.wav): turns any audio-only file into a standalone <code>.wav</code> and replaces the original.</span><span lang="de">Audio zu WAV (.wav): macht aus jeder reinen Audiodatei eine eigenständige <code>.wav</code> und ersetzt das Original.</span></li>
+          <li><span lang="en">Audio-only files work with the FLAC and AAC conversions too (for example <code>.m4a</code> → <code>.flac</code>, audio → <code>.m4a</code>).</span><span lang="de">Reine Audiodateien gehen auch mit den FLAC- und AAC-Umwandlungen (zum Beispiel <code>.m4a</code> → <code>.flac</code>, Audio → <code>.m4a</code>).</span></li>
+        </ul></div>
+        <div class="release-group" data-kind="improved"><h3><span lang="en">Improved</span><span lang="de">Verbessert</span></h3><ul>
+          <li><span lang="en">FLAC and WAV conversions accept every audio codec FFmpeg reads, not only AAC; the menu entries are called Audio to FLAC / WAV / AAC instead of "AAC → …".</span><span lang="de">FLAC- und WAV-Umwandlungen nehmen jeden Audio-Codec, den FFmpeg liest, nicht nur AAC; die Menüeinträge heißen Audio zu FLAC / WAV / AAC statt „AAC → …“.</span></li>
+          <li><span lang="en">DNx conversions skip audio-only files with a clearer message.</span><span lang="de">DNx-Umwandlungen überspringen reine Audiodateien mit einer klareren Meldung.</span></li>
+        </ul></div>
+        <div class="release-group" data-kind="note"><h3><span lang="en">Note</span><span lang="de">Hinweis</span></h3><ul>
+          <li><span lang="en">The scripts are renamed: <code>aac2flac_*</code> → <code>audio2flac_*</code>, <code>aac2wav_*</code> → <code>audio2wav_*</code>, <code>toaac_*</code> → <code>audio2aac_*</code>. Run <code>install.sh</code> again so Dolphin finds them.</span><span lang="de">Die Skripte heißen neu: <code>aac2flac_*</code> → <code>audio2flac_*</code>, <code>aac2wav_*</code> → <code>audio2wav_*</code>, <code>toaac_*</code> → <code>audio2aac_*</code>. <code>install.sh</code> erneut ausführen, damit Dolphin sie findet.</span></li>
+        </ul></div>
+        <a class="release-notes" href="https://github.com/shrippen/dolphin-davinci-audio-tools/compare/v1.1.0...v1.2.0"><span lang="en">All changes since 1.1.0 →</span><span lang="de">Alle Änderungen seit 1.1.0 →</span></a>
+      </div>
+    </li>
+    <li class="release" id="v1.1.0">
+      <div class="release-head"><b class="release-version">1.1.0</b><time datetime="2026-08-10"><span lang="en">10 Aug 2026</span><span lang="de">10. Aug. 2026</span></time></div>
+      <div class="release-body">
+        <p class="release-lead"><span lang="en">Converting many files shows one progress dialog with an estimate of the time left.</span><span lang="de">Beim Umwandeln vieler Dateien gibt es einen Fortschrittsdialog mit einer Schätzung der Restzeit.</span></p>
+        <div class="release-group" data-kind="new"><h3><span lang="en">New</span><span lang="de">Neu</span></h3><ul>
+          <li><span lang="en">One progress dialog for the whole batch instead of a new one per file, with the files still waiting in its label.</span><span lang="de">Ein Fortschrittsdialog für den ganzen Stapel statt eines neuen je Datei, mit den noch wartenden Dateien in seiner Beschriftung.</span></li>
+          <li><span lang="en">A rough estimate of the time left, weighted by the length of every file in the queue.</span><span lang="de">Eine grobe Schätzung der Restzeit, gewichtet nach der Länge jeder Datei in der Warteschlange.</span></li>
+        </ul></div>
+        <div class="release-group" data-kind="fixed"><h3><span lang="en">Fixed</span><span lang="de">Behoben</span></h3><ul>
+          <li><span lang="en">The progress bar did not move and the dialog did not close (the D-Bus reference for <code>qdbus</code> was split wrongly).</span><span lang="de">Der Fortschrittsbalken bewegte sich nicht, und der Dialog schloss nicht (die D-Bus-Referenz für <code>qdbus</code> wurde falsch zerlegt).</span></li>
+          <li><span lang="en">Media lengths are read the same in every locale, so progress and estimate are right with a decimal comma too.</span><span lang="de">Medienlängen werden in jeder Sprache gleich gelesen, Fortschritt und Schätzung stimmen auch mit Dezimalkomma.</span></li>
+        </ul></div>
+        <a class="release-notes" href="https://github.com/shrippen/dolphin-davinci-audio-tools/compare/v1.0.0...v1.1.0"><span lang="en">All changes since 1.0.0 →</span><span lang="de">Alle Änderungen seit 1.0.0 →</span></a>
+      </div>
+    </li>
+  </ol>
+  <details class="changelog-more"><summary><span lang="en">Older releases</span><span lang="de">Ältere Versionen</span></summary>
+  <ol class="changelog">
+    <li class="release" id="v1.0.0">
+      <div class="release-head"><b class="release-version">1.0.0</b><time datetime="2026-08-10"><span lang="en">10 Aug 2026</span><span lang="de">10. Aug. 2026</span></time></div>
+      <div class="release-body">
+        <p class="release-lead"><span lang="en">The first release: Dolphin service menus that turn audio and video into formats DaVinci Resolve on Linux can read, with native KDE dialogs.</span><span lang="de">Die erste Version: Dolphin-Dienstmenüs, die Ton und Video in Formate umwandeln, die DaVinci Resolve unter Linux lesen kann, mit nativen KDE-Dialogen.</span></p>
+        <div class="release-group" data-kind="new"><h3><span lang="en">New</span><span lang="de">Neu</span></h3><ul>
+          <li><span lang="en">AAC → FLAC (replace in place or write <code>.mkv</code>), AAC → WAV keeping the container, to AAC with a fitting container (<code>.mp4</code> / <code>.mov</code>), and DNxHD / DNxHR SQ as <code>.mov</code>.</span><span lang="de">AAC → FLAC (an Ort und Stelle ersetzen oder <code>.mkv</code> schreiben), AAC → WAV mit gleichem Container, zu AAC mit passendem Container (<code>.mp4</code> / <code>.mov</code>) und DNxHD / DNxHR SQ als <code>.mov</code>.</span></li>
+          <li><span lang="en">Several selected files at once, with progress dialogs and desktop notifications.</span><span lang="de">Mehrere ausgewählte Dateien auf einmal, mit Fortschrittsdialogen und Desktop-Benachrichtigungen.</span></li>
+          <li><span lang="en">Install and uninstall scripts for common Linux distributions.</span><span lang="de">Skripte zum Installieren und Entfernen für verbreitete Linux-Distributionen.</span></li>
+          <li><span lang="en">Each result is checked before it replaces the original.</span><span lang="de">Jedes Ergebnis wird geprüft, bevor es das Original ersetzt.</span></li>
+        </ul></div>
+        <div class="release-group" data-kind="improved"><h3><span lang="en">Improved</span><span lang="de">Verbessert</span></h3><ul>
+          <li><span lang="en">Progress and confirmation dialogs use KDE's <code>kdialog</code> instead of GNOME's <code>zenity</code>.</span><span lang="de">Fortschritts- und Bestätigungsdialoge nutzen KDEs <code>kdialog</code> statt GNOMEs <code>zenity</code>.</span></li>
+        </ul></div>
+        <div class="release-group" data-kind="note"><h3><span lang="en">Note</span><span lang="de">Hinweis</span></h3><ul>
+          <li><span lang="en">Needs <code>kdialog</code> and <code>qdbus</code>/<code>qdbus6</code> instead of <code>zenity</code>.</span><span lang="de">Braucht <code>kdialog</code> und <code>qdbus</code>/<code>qdbus6</code> statt <code>zenity</code>.</span></li>
+        </ul></div>
+        <a class="release-notes" href="https://github.com/shrippen/dolphin-davinci-audio-tools/compare/b75df40...v1.0.0"><span lang="en">All changes since the original →</span><span lang="de">Alle Änderungen seit dem Original →</span></a>
+      </div>
+    </li>
+  </ol>
+  </details>
+</section>
 </main>
 
 <footer class="foot">
@@ -115,7 +187,7 @@
       <div><span class="foot-name">Dolphin Davinci Audio Tools</span><span class="foot-tag"><span lang="en">Audio and video tools for Davinci Resolve</span><span lang="de">Audio- und Video-Werkzeuge für Davinci Resolve</span></span></div>
     </div>
     <nav class="foot-cols" aria-label="Footer">
-      <div><h4><span lang="en">Project</span><span lang="de">Projekt</span></h4><a href="#features"><span lang="en">Features</span><span lang="de">Funktionen</span></a><a href="#conversions"><span lang="en">Conversions</span><span lang="de">Konvertierungen</span></a><a href="#install"><span lang="en">Install</span><span lang="de">Installation</span></a></div>
+      <div><h4><span lang="en">Project</span><span lang="de">Projekt</span></h4><a href="#features"><span lang="en">Features</span><span lang="de">Funktionen</span></a><a href="#conversions"><span lang="en">Conversions</span><span lang="de">Konvertierungen</span></a><a href="#install"><span lang="en">Install</span><span lang="de">Installation</span></a><a href="#changes"><span lang="en">Changes</span><span lang="de">Änderungen</span></a></div>
       <div><h4><span lang="en">Source</span><span lang="de">Quelltext</span></h4><a href="https://github.com/shrippen/dolphin-davinci-audio-tools">GitHub</a><a href="https://github.com/shrippen/dolphin-davinci-audio-tools/issues">Issues</a><a href="https://github.com/shrippen/dolphin-davinci-audio-tools/releases">Releases</a><a href="https://github.com/shrippen/dolphin-davinci-audio-tools/blob/main/CHANGELOG.md">Changelog</a></div>
     </nav>
   </div>
