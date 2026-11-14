@@ -14,8 +14,8 @@ place of the original.
 
 | Path | Its one task |
 |---|---|
-| `servicemenus/` | The menu: two entries per format (new file, replace), each starts that format's script with the selected files. |
-| `scripts/<format>` | One format each (FLAC, WAV, AAC, DNx): which files it takes, the ffmpeg options, the name of the result. The menu entry tells it: new file or replace. |
+| `servicemenus/` | The menu: one entry per thing the user can choose, each starts one format's script with the selected files. |
+| `scripts/<format>` | One format each (FLAC, WAV, AAC, DNx): which files it takes, the ffmpeg options, the name of the result. Where the menu offers a choice, its entry tells the script which. |
 | `scripts/lib_media_helpers.sh` | What every conversion needs to know about a file: is it readable, what streams it has, a free file name, putting a result in place of the original. |
 | `scripts/lib_batch_progress.sh` | The run of a batch: queues the files, opens the progress dialog, runs ffmpeg under it, shows the remaining time, reports a failure, cleans up. |
 | `scripts/release-notes.sh` | Release notes from `CHANGELOG.md`; a copy Kante syncs under exactly this path. Not installed. |
@@ -27,7 +27,7 @@ place of the original.
 ## Layers
 
 ```
- Dolphin ─► servicemenus/*.desktop ─► scripts/<format>  (new | replace)
+ Dolphin ─► servicemenus/*.desktop ─► scripts/<format>  (with the choice)
                                           │            │
                                           ▼            ▼
                          lib_media_helpers.sh    lib_batch_progress.sh
@@ -38,8 +38,10 @@ place of the original.
 
 - A menu entry starts exactly one format script; the menu holds no logic.
 - There is one script per format. It holds what is particular to the format, once: which
-  files it accepts, its ffmpeg options, the name of its result. "New file" and "replace"
-  are two ways to end the same script, not two scripts.
+  files it accepts, its ffmpeg options, the name of its result. A choice the menu offers
+  is a way through the same script, not a script of its own: "new file" or "replace" for
+  FLAC, AAC and DNx; for WAV, which always replaces, "a sound file becomes .wav" or "a
+  video keeps its container and gets WAV sound".
 - Everything two formats share lives in one of the two libraries, once: reading a file's
   properties and replacing an original in `lib_media_helpers.sh`, the run of a batch
   (queue, dialog, ffmpeg, messages, cleanup) in `lib_batch_progress.sh`.
@@ -56,7 +58,7 @@ place of the original.
 
 | Change | Touch |
 |---|---|
-| A new format | A new `scripts/<format>`, its two entries in `servicemenus/`, the list in `install.sh` (until the deviation below is gone), README and landing page |
+| A new format | A new `scripts/<format>`, its entries in `servicemenus/`, the list in `install.sh` (until the deviation below is gone), README and landing page |
 | Other ffmpeg options for one format | That `scripts/<format>` only (today: both scripts of the pair) |
 | A new check on a file (stream, codec, size) | `scripts/lib_media_helpers.sh` |
 | When an original may be replaced | `scripts/lib_media_helpers.sh` only |
@@ -70,8 +72,11 @@ place of the original.
   (`AUDIT.md`, finding 1).
 - The two DNx scripts do not use `lib_media_helpers.sh` and carry their own copies; the
   duration of a file is read in `lib_batch_progress.sh` (`AUDIT.md`, finding 2).
-- Every format has two scripts, one per ending (eight in all), that repeat the format's
-  checks and ffmpeg options; the DNx pair is the largest (`AUDIT.md`, findings 3 and 4).
+- Every format has two scripts, one per menu entry (eight in all). The FLAC, AAC and DNx
+  pairs repeat the format's checks and ffmpeg options, the DNx pair most
+  (`AUDIT.md`, findings 3 and 4); the names of the WAV pair do not say what sets the two
+  apart (`AUDIT.md`, finding 6). To be solved by one script per format, not by a shared
+  file per pair or new names as the findings propose.
 - All eight scripts repeat the run of a batch around their ffmpeg call instead of leaving
   it to `lib_batch_progress.sh` (`AUDIT.md`, finding 4).
 - `install.sh` keeps its own list of scripts (`AUDIT.md`, finding 7).
