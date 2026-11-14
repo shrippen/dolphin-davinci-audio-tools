@@ -7,8 +7,8 @@ How this repository is meant to be built. Where the code differs today is listed
 
 Right-click entries for the file manager Dolphin: they convert the selected video and audio
 files with ffmpeg into formats DaVinci Resolve on Linux can read (FLAC or WAV sound,
-DNxHD/DNxHR video), and Resolve's sound back into AAC; each either as a new file or in
-place of the original.
+DNxHD/DNxHR video), and Resolve's sound back into AAC; FLAC, AAC and DNx either as a new
+file or in place of the original, WAV always in place.
 
 ## Building blocks
 
