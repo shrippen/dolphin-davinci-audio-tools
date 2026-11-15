@@ -6,3 +6,9 @@
 /tools export-ignore
 /structure.baseline export-ignore
 /AUDIT.md export-ignore
+
+# Not part of release archives: rule files for agents.
+/CLAUDE.md export-ignore
+/ARCHITECTURE.md export-ignore
+/agent.md export-ignore
+/RULES.md export-ignore
