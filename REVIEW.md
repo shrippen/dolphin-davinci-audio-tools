@@ -32,8 +32,9 @@ can read, with ffmpeg and kdialog. A bug that matters loses or damages the user'
 
 - Layers: as in `ARCHITECTURE.md`. A menu entry holds no logic; a format script calls no
   other script; the libraries do not know single formats; `scripts/` does not know `demo/`.
-- Replacing an original happens in one place, after the result is checked. A new copy of
-  that logic in a format script is **Wichtig**.
+- Replacing an original belongs in one place, after the result is checked. Five scripts
+  still do it themselves (`ARCHITECTURE.md`, "Known deviations"): that is **Bestand**; a
+  new copy of that logic in a format script is **Wichtig**.
 - Shell: every expansion quoted, `set` options and `trap` cleanup as in the neighbouring
   scripts, no `eval` on file names.
 - There are no tests. A change to what a script decides (target name, DNx variant, when an
@@ -43,11 +44,12 @@ can read, with ffmpeg and kdialog. A bug that matters loses or damages the user'
   fonts. The dialogs are kdialog and need nothing from Kante.
 - Bug fixes: the cause removed. A test that failed before is wanted where the code can be
   tested; today there is no test setup.
-- Structure: `pipx run tools/structure-check.py` is clean; no new entry in `structure.baseline`.
+- Structure: `pipx run tools/structure-check.py` is clean; a new or raised
+  entry in `structure.baseline` only with its reason in the PR.
 
 ## What the owner confirms here
 
-- A release, a tag, a change of the landing page's published text (`CHANGELOG.md`).
+- A release, a tag.
 - Changes to the rule files (`agent.md`, `RULES.md`, `REVIEW.md`) and to `ARCHITECTURE.md`
   "Layers".
 
@@ -62,5 +64,12 @@ can read, with ffmpeg and kdialog. A bug that matters loses or damages the user'
 - Every finding names file and line and the concrete input or state that goes wrong.
   No guess without evidence; if unsure, say so.
 - Each finding gets one label: **Wichtig** (must be fixed or answered before the merge),
-  **Kleinigkeit** (optional, at most five) or **Bestand** (was there before this PR).
-- The report starts with the count, e.g. "2 Wichtig, 1 Kleinigkeit".
+  **Kleinigkeit** (optional, at most five) or **Bestand** (was there before this PR; not
+  blocking).
+- The report starts with the count, e.g. "2 Wichtig, 1 Kleinigkeit, 0 Bestand" (the session
+  puts the heading above it). The count of **Wichtig** holds every one still open, also from
+  an earlier round, e.g. "1 Wichtig (offen aus Runde 1)". Only when none is open it says
+  plainly: "Nichts zu beheben."
+- In a later round: say for each open **Wichtig** of the last round whether it is fixed, or
+  whether its answer is accepted, with the reason (skill `pr-review`).
+- Findings in German, code names as they are.
